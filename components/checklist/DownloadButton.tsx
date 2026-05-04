@@ -22,21 +22,71 @@ export default function DownloadButton({ roadmap }: DownloadButtonProps) {
       const maxW = pageW - margin * 2;
       let y = margin;
 
+      const pageH = doc.internal.pageSize.getHeight();
+
+      const checkPage = (neededHeight: number) => {
+        if (y + neededHeight > pageH - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      };
+
       const addText = (text: string, size: number, isBold = false, color = [30, 30, 30] as [number, number, number]) => {
         doc.setFontSize(size);
         doc.setFont("helvetica", isBold ? "bold" : "normal");
         doc.setTextColor(...color);
         const lines = doc.splitTextToSize(text, maxW) as string[];
         const lineH = size * 1.4;
-        if (y + lines.length * lineH > doc.internal.pageSize.getHeight() - margin) {
-          doc.addPage();
-          y = margin;
-        }
+        checkPage(lines.length * lineH);
         doc.text(lines, margin, y);
         y += lines.length * lineH;
       };
 
       const addSpace = (n = 12) => { y += n; };
+
+      // Draw a checkbox [ ] using rect, then text to the right
+      const addCheckItem = (text: string) => {
+        const size = 10;
+        const lineH = size * 1.4;
+        const boxSize = 7;
+        const textIndent = margin + boxSize + 6;
+        const textMaxW = maxW - boxSize - 6;
+
+        doc.setFontSize(size);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(30, 30, 30);
+        const lines = doc.splitTextToSize(text, textMaxW) as string[];
+        checkPage(lines.length * lineH + 2);
+
+        // Draw the checkbox rect
+        doc.setDrawColor(160, 160, 160);
+        doc.setLineWidth(0.5);
+        doc.rect(margin, y - boxSize + 1, boxSize, boxSize);
+
+        // Draw the text beside it
+        doc.text(lines, textIndent, y);
+        y += lines.length * lineH + 2;
+      };
+
+      // Bullet point using a drawn circle
+      const addBullet = (text: string, color = [80, 80, 80] as [number, number, number]) => {
+        const size = 10;
+        const lineH = size * 1.4;
+        const dotX = margin + 3;
+        const textIndent = margin + 12;
+        const textMaxW = maxW - 12;
+
+        doc.setFontSize(size);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(...color);
+        const lines = doc.splitTextToSize(text, textMaxW) as string[];
+        checkPage(lines.length * lineH + 4);
+
+        doc.setFillColor(...color);
+        doc.circle(dotX, y - 3, 1.5, "F");
+        doc.text(lines, textIndent, y);
+        y += lines.length * lineH + 4;
+      };
 
       // Title
       addText("ImmigrantIQ", 9, false, [13, 148, 136]);
@@ -48,7 +98,6 @@ export default function DownloadButton({ roadmap }: DownloadButtonProps) {
       addText(`Generated ${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`, 9, false, [150, 150, 150]);
 
       addSpace(20);
-      // Divider
       doc.setDrawColor(220, 220, 220);
       doc.line(margin, y, pageW - margin, y);
       addSpace(20);
@@ -61,13 +110,12 @@ export default function DownloadButton({ roadmap }: DownloadButtonProps) {
 
       // Document Groups
       addText("Documents to Gather", 13, true);
-      addSpace(8);
+      addSpace(10);
       for (const group of roadmap.documentGroups) {
         addText(group.category.toUpperCase(), 8, true, [13, 148, 136]);
-        addSpace(4);
+        addSpace(6);
         for (const item of group.items) {
-          addText(`  ☐  ${item}`, 10);
-          addSpace(2);
+          addCheckItem(item);
         }
         addSpace(10);
       }
@@ -78,8 +126,7 @@ export default function DownloadButton({ roadmap }: DownloadButtonProps) {
         addText("Important Deadlines & Reminders", 13, true);
         addSpace(8);
         for (const d of roadmap.importantDeadlines) {
-          addText(`  •  ${d}`, 10, false, [80, 80, 80]);
-          addSpace(4);
+          addBullet(d);
         }
       }
 
